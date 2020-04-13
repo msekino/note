@@ -61,6 +61,7 @@ double[] x = ArrayUtils.toPrimitive(x2);
 ```
 
 ### Julia
+Juliaの配列は実装は静的配列で高速なアクセスが可能でありつつ、動的配列のように値を追加することもできる。
 ```
 x = []
 for i in 1:5
@@ -210,39 +211,45 @@ exp.(X)   #全ての要素にexp()を適用
 # 機械学習の目的関数
 ## loglossの計算
 確率の推定値 p の実現値 y ∈ {0,1} に対するloglossは
+```
+- y log(p) - (1-y) log(1-p)
+```
+だが、二回 log を計算するのを避けて
+
 - y = 1 のとき -log(p)
 - y = 0 のとき -log(1-p)
 
-で一行で -log((1-y) + (2y-1) * p) とも計算できる。
+と実装する。
+または一行で log も一回で -log((1-y) + (2y-1) * p) とも書ける。
 
 ### Java
 Javaでは愚直に書くのが素直？  
 zip関数が無いのでインデックスで参照する必要がある。
 ```
-public double logloss(double[] y, double[] p) {
-  double logloss;
+public double logloss(double[] p, double[] y) {
+  double logloss = 0.0;
 
   for(int i = 0; i < y.length; i++) {
-		if(y[i] == 1) {
-			loss = -Math.log(p[i]);
-		} else {
-			loss = -Math.log(1.0-p[i]);
-		}
+    if(y[i] == 1.0) {
+      logloss += -Math.log(p[i]);
+    } else {
+      logloss += -Math.log(1.0-p[i]);
+    }
   }
 
-  return loss;
+  return logloss;
 }
 ```
 または三項演算子を用いて
 ```
-public double logloss(double[] y, double[] p) {
-  double logloss;
+public double logloss(double[] p, double[] y) {
+  double logloss = 0.0;
 
   for(int i = 0; i < y.length; i++) {
-    logloss += (y[i]==1) ? -Math.log(p[i]) : -Math.log(1.0-p[i])
+    logloss += (y[i]==1.0) ? -Math.log(p[i]) : -Math.log(1.0-p[i]);
   }
 
-  return loss;
+  return logloss;
 }
 ```
 など。
@@ -250,10 +257,10 @@ public double logloss(double[] y, double[] p) {
 ### Julia
 Juliaにはzip関数があるのでfor文はインデックス参照より可読性が高くなる。
 ```
-function logloss(ys, ps)
+function logloss(ps, ys)
   logloss = 0.0;
 
-  for (y, p) in zip(ys,ps)
+  for (p, y) in zip(ps, ys)
     logloss += (y==1) ? -log(p) : -log(1-p)
   end
 
@@ -262,12 +269,12 @@ end
 ```
 内包表記を用いて
 ```
-logloss(ys, ps) = sum([(y==1) ? -log(p) : -log(1-p) for (y,p) in zip(ys,ps)])
+logloss(ps, ys) = sum([(y==1) ? -log(p) : -log(1-p) for (p, y) in zip(ps, ys)])
 ```
 とも書ける。
 一行の式を用いて
 ```
-logloss(y, p) = -sum(@. log((1-y) + (2y-1) * p))
+logloss(p, y) = - sum(@. log((1-y) + (2y-1) * p))
 ```
 とも書ける。
 @. は以降の演算を要素ごとに（broadcastして効率的に）演算するオペレータ。
